@@ -1,0 +1,268 @@
+"$schema" = "https://starship.rs/config-schema.json"
+
+add_newline = false
+command_timeout = 500
+scan_timeout = 30
+
+format = ""
+
+right_format = """
+$hostname\
+$shlvl\
+$container\
+$nix_shell\
+$conda\
+$pixi\
+$python\
+$rust\
+$nodejs\
+$bun\
+$deno\
+$c\
+$cpp\
+$cmake\
+$golang\
+$java\
+$kotlin\
+$dotnet\
+$php\
+$haskell\
+$lua\
+$ruby\
+$swift\
+$cmd_duration\
+$jobs\
+$status\
+$git_branch$git_commit$git_state$git_status\
+[ ](fg:prev_bg bg:none)
+"""
+
+palette = "vingilot"
+
+[palettes.vingilot]
+context_bg = "#343a46"
+context_fg = "#d3d7df"
+
+python_blue = "#3776ab"
+python_yellow = "#ffd43b"
+rust_bg = "#d34516"
+rust_fg = "#ffffff"
+node_bg = "#5fa04e"
+node_fg = "#101410"
+bun_bg = "#eadfce"
+bun_fg = "#161616"
+deno_bg = "#333333"
+deno_fg = "#eeeeee"
+c_bg = "#5555aa"
+cpp_bg = "#00599c"
+cmake_bg = "#064f8c"
+go_bg = "#00add8"
+java_bg = "#b07219"
+kotlin_bg = "#7f52ff"
+dotnet_bg = "#512bd4"
+php_bg = "#777bb4"
+haskell_bg = "#5d4f85"
+lua_bg = "#25258f"
+ruby_bg = "#cc342d"
+swift_bg = "#f05138"
+
+nix_bg = "#7ebae4"
+nix_fg = "#10212a"
+conda_bg = "#66bb6a"
+conda_fg = "#102010"
+pixi_bg = "#ffd54f"
+pixi_fg = "#181818"
+
+duration_bg = "#ffb74d"
+duration_fg = "#181818"
+jobs_bg = "#90a4ae"
+jobs_fg = "#15191b"
+failure_bg = "#c62828"
+failure_fg = "#ffffff"
+
+# Git identity uses Git's canonical orange branding.
+git_brand_bg = "#f05032"
+git_brand_fg = "#ffffff"
+
+# Repository status / attention state.
+git_bg = "#d8b45a"
+git_fg = "#241f14"
+
+# Host is the only bold section.
+# "inverted" uses the terminal's own default BG as text color.
+[hostname]
+disabled = false
+ssh_only = false
+trim_at = "."
+format = "[ $hostname ](bold fg:#626975 bg:#000000)"
+
+# ---------------------------------------------------------------------------
+# Shell / environment context
+# ---------------------------------------------------------------------------
+
+[shlvl]
+disabled = false
+threshold = 2
+symbol = "󰹍"
+format = "[ ](fg:prev_bg bg:context_bg)[ $symbol $shlvl ](fg:context_fg bg:context_bg)"
+
+[container]
+symbol = ""
+format = "[ $symbol $name](fg:context_fg bg:context_bg)"
+
+[nix_shell]
+symbol = ""
+
+# Nix shell purity state.
+#
+# Use compact Nerd Font glyphs rather than the default "pure"/"impure"
+# labels. The Nix symbol already establishes the context, so the state
+# indicator only needs to communicate the distinction:
+#
+#   heart        = pure
+#   broken heart = impure
+#   heart off    = unknown
+#
+# Keep the shell name when available: projects can provide a meaningful
+# name through their Nix dev-shell definition.
+pure_msg = "󰋑"
+impure_msg = "󰋔"
+unknown_msg = "󰝙"
+
+format = "[ ](fg:prev_bg bg:nix_bg)[ $symbol $state( $name)](fg:nix_fg bg:nix_bg)"
+
+[conda]
+symbol = ""
+format = "[ ](fg:prev_bg bg:conda_bg)[ $symbol $environment](fg:conda_fg bg:conda_bg)"
+
+[pixi]
+symbol = "󰏗"
+format = "[ ](fg:prev_bg bg:pixi_bg)[ $symbol $environment](fg:pixi_fg bg:pixi_bg)"
+
+# ---------------------------------------------------------------------------
+# Toolchains
+# ---------------------------------------------------------------------------
+
+[python]
+symbol = ""
+version_format = "${raw}"
+format = "[ ](fg:prev_bg bg:python_blue)[ $symbol ](fg:python_yellow bg:python_blue)[$version ](fg:#ffffff bg:python_blue)"
+
+[rust]
+symbol = "󱘗"
+format = "[ ](fg:prev_bg bg:rust_bg)[ $symbol $version ](fg:rust_fg bg:rust_bg)"
+
+[nodejs]
+symbol = ""
+format = "[ ](fg:prev_bg bg:node_bg)[ $symbol $version ](fg:node_fg bg:node_bg)"
+
+[bun]
+symbol = ""
+format = "[ ](fg:prev_bg bg:bun_bg)[ $symbol $version ](fg:bun_fg bg:bun_bg)"
+
+[deno]
+symbol = ""
+format = "[ ](fg:prev_bg bg:deno_bg)[ $symbol $version ](fg:deno_fg bg:deno_bg)"
+
+[c]
+symbol = ""
+format = "[ ](fg:prev_bg bg:c_bg)[ $symbol $version ](fg:#ffffff bg:c_bg)"
+
+[cpp]
+symbol = ""
+format = "[ ](fg:prev_bg bg:cpp_bg)[ $symbol $version ](fg:#ffffff bg:cpp_bg)"
+
+[cmake]
+symbol = ""
+format = "[ ](fg:prev_bg bg:cmake_bg)[ $symbol $version ](fg:#ffffff bg:cmake_bg)"
+
+[golang]
+symbol = ""
+format = "[ ](fg:prev_bg bg:go_bg)[ $symbol $version ](fg:#102027 bg:go_bg)"
+
+[java]
+symbol = ""
+format = "[ ](fg:prev_bg bg:java_bg)[ $symbol $version ](fg:#ffffff bg:java_bg)"
+
+[kotlin]
+symbol = ""
+format = "[ ](fg:prev_bg bg:kotlin_bg)[ $symbol $version ](fg:#ffffff bg:kotlin_bg)"
+
+[dotnet]
+symbol = ""
+format = "[ ](fg:prev_bg bg:dotnet_bg)[ $symbol $version ](fg:#ffffff bg:dotnet_bg)"
+
+[php]
+symbol = ""
+format = "[ ](fg:prev_bg bg:php_bg)[ $symbol $version ](fg:#111111 bg:php_bg)"
+
+[haskell]
+symbol = ""
+format = "[ ](fg:prev_bg bg:haskell_bg)[ $symbol $version ](fg:#ffffff bg:haskell_bg)"
+
+[lua]
+symbol = ""
+format = "[ ](fg:prev_bg bg:lua_bg)[ $symbol $version ](fg:#ffffff bg:lua_bg)"
+
+[ruby]
+symbol = ""
+format = "[ ](fg:prev_bg bg:ruby_bg)[ $symbol $version ](fg:#ffffff bg:ruby_bg)"
+
+[swift]
+symbol = ""
+format = "[ ](fg:prev_bg bg:swift_bg)[ $symbol $version ](fg:#ffffff bg:swift_bg)"
+
+# ---------------------------------------------------------------------------
+# Exceptional state
+# ---------------------------------------------------------------------------
+
+[cmd_duration]
+min_time = 10000
+show_milliseconds = false
+format = "[ ](fg:prev_bg bg:duration_bg)[  $duration ](fg:duration_fg bg:duration_bg)"
+
+[jobs]
+symbol = ""
+number_threshold = 1
+symbol_threshold = 1
+format = "[ ](fg:prev_bg bg:jobs_bg)[ $symbol $number ](fg:jobs_fg bg:jobs_bg)"
+
+[status]
+disabled = false
+symbol = ""
+success_symbol = ""
+recognize_signal_code = true
+map_symbol = false
+pipestatus = true
+format = "[ ](fg:prev_bg bg:failure_bg)[ $symbol $status ](fg:failure_fg bg:failure_bg)"
+
+# ---------------------------------------------------------------------------
+# Git - one single visual block
+# ---------------------------------------------------------------------------
+
+[git_branch]
+symbol = "󰊢"
+format = "[ ](fg:prev_bg bg:git_brand_bg)[ $symbol $branch ](fg:git_brand_fg bg:git_brand_bg)"
+
+[git_commit]
+only_detached = true
+tag_disabled = false
+tag_symbol = " "
+format = "[  $hash$tag](fg:git_brand_fg bg:git_brand_bg)"
+
+[git_state]
+format = "[](fg:git_bg bg:git_brand_bg)[ $state( $progress_current/$progress_total) ](fg:git_fg bg:git_bg)"
+
+[git_status]
+format = "([](fg:git_bg bg:git_brand_bg)[$all_status$ahead_behind ](fg:git_fg bg:git_bg))"
+conflicted = "  ${count}"
+ahead = "  ${count}"
+behind = "  ${count}"
+diverged = "  ${ahead_count}/${behind_count}"
+up_to_date = ""
+untracked = " 󱗃 ${count}"
+stashed = " =${count}"
+modified = "  ${count}"
+staged = "  ${count}"
+renamed = " >${count}"
+deleted = " -${count}"

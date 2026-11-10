@@ -1,0 +1,51 @@
+name: Publish Vingilot release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      attestations: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884
+        with:
+          version-file: pyproject.toml
+          enable-cache: false
+          download-from-astral-mirror: false
+      - name: Prepare distro zsh for native tests
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends zsh
+          zsh --version
+      - run: uv sync --locked
+      - name: Verify release source and version
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          git merge-base --is-ancestor HEAD origin/main
+          uv run --locked python -c 'import os, pathlib, tomllib; version = tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"]; raise SystemExit(0 if os.environ["RELEASE_TAG"] == "v" + version else "tag/version mismatch")'
+      - run: uv run --locked python tools/prepare-starship
+      - run: make release
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
+        with:
+          subject-path: dist/*
+      - name: Publish reviewed tag and checked assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$RELEASE_TAG" dist/* --draft --verify-tag --generate-notes
+          gh release edit "$RELEASE_TAG" --draft=false

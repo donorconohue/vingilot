@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 168" role="img" aria-labelledby="title desc">
+  <title id="title">Vingilot prompt layout</title>
+  <desc id="desc">An illustrative terminal with a green command marker, host, Git branch, and directory context.</desc>
+  <rect x="1" y="1" width="758" height="166" rx="16" fill="#151922" stroke="#323a4a"/>
+  <path d="M 2,44 H 758" stroke="#323a4a"/>
+  <circle cx="24" cy="23" r="4" fill="#f0786b"/>
+  <circle cx="40" cy="23" r="4" fill="#efb86a"/>
+  <circle cx="56" cy="23" r="4" fill="#79cb9c"/>
+  <text x="380" y="28" text-anchor="middle" fill="#cbd3e2" font-family="system-ui, sans-serif" font-size="13">vingilot · zsh + starship</text>
+  <g font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="16">
+    <text x="28" y="102" fill="#8be0aa" font-weight="bold">›</text>
+    <rect x="49" y="86" width="9" height="19" rx="2" fill="#dce4f3"/>
+    <path d="M 80,78 H 220 L 231,96 L 220,114 H 80 Z" fill="#303b50"/>
+    <text x="96" y="102" fill="#e4ecf9">workstation</text>
+    <path d="M 231,78 H 357 L 368,96 L 357,114 H 231 L 242,96 Z" fill="#e6a466"/>
+    <text x="252" y="102" fill="#231913">git main</text>
+    <text x="385" y="102" fill="#aeb9cc">…/projects/vingilot</text>
+  </g>
+</svg>

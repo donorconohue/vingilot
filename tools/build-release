@@ -1,0 +1,49 @@
+#!/usr/bin/env python3
+"""Pack the documented installation inputs with deterministic archive metadata."""
+
+import argparse
+import gzip
+import hashlib
+import io
+import tarfile
+import tomllib
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+FILES = (
+    "LICENSE",
+    "README.md",
+    "install.zsh",
+    "docs/prompt-preview.svg",
+    "CONTRIBUTING.md",
+    "licenses/Starship-ISC.txt",
+    "starship/generated/vingilot.toml",
+    "zsh/prompt_vingilot_setup",
+)
+
+
+def build(output):
+    version = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
+    output.mkdir(parents=True, exist_ok=True)
+    prefix = f"vingilot-{version}"
+    artifact = output / f"{prefix}.tar.gz"
+    with (
+        artifact.open("wb") as stream,
+        gzip.GzipFile(fileobj=stream, filename="", mode="wb", mtime=0) as gz,
+    ):
+        with tarfile.open(fileobj=gz, mode="w", format=tarfile.USTAR_FORMAT) as archive:
+            for relative in FILES:
+                raw = (ROOT / relative).read_bytes()
+                member = tarfile.TarInfo(f"{prefix}/{relative}")
+                member.size = len(raw)
+                member.mode = 0o755 if relative == "install.zsh" else 0o644
+                archive.addfile(member, io.BytesIO(raw))
+    digest = hashlib.sha256(artifact.read_bytes()).hexdigest()
+    (output / "SHA256SUMS").write_text(f"{digest}  {artifact.name}\n", encoding="ascii")
+    return artifact
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, default=ROOT / "dist")
+    print(build(parser.parse_args().output))

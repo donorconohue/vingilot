@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+"""Retrieve the pinned upstream Starship test binary into a disposable project cache."""
+
+import hashlib
+import io
+import json
+import os
+import platform
+import subprocess
+import tarfile
+import tempfile
+import urllib.request
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+MAX_ARCHIVE = 32 * 1024 * 1024
+
+
+def main():
+    pin = json.loads((ROOT / "toolchain.json").read_text())["starship"]
+    arch = {"arm64": "aarch64", "AMD64": "x86_64"}.get(platform.machine(), platform.machine())
+    suffix = {"Darwin": "apple-darwin", "Linux": "unknown-linux-musl"}.get(platform.system())
+    target = f"{arch}-{suffix}"
+    expected = pin["archives"].get(target)
+    if not expected:
+        raise SystemExit(f"Unsupported Starship test platform: {target}")
+    version = pin["version"]
+    filename = f"starship-{target}.tar.gz"
+    url = f"https://github.com/starship/starship/releases/download/v{version}/{filename}"
+    with urllib.request.urlopen(url, timeout=60) as response:
+        raw = response.read(MAX_ARCHIVE + 1)
+    if len(raw) > MAX_ARCHIVE or hashlib.sha256(raw).hexdigest() != expected:
+        raise SystemExit("Pinned Starship archive integrity check failed")
+    with tarfile.open(fileobj=io.BytesIO(raw), mode="r:gz") as archive:
+        member = archive.getmember("starship")
+        if not member.isfile() or member.size > MAX_ARCHIVE:
+            raise SystemExit("Unexpected Starship archive member")
+        binary = archive.extractfile(member).read()
+    output = ROOT / ".toolchain/starship"
+    output.parent.mkdir(exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=output.parent) as directory:
+        candidate = Path(directory) / "starship"
+        candidate.write_bytes(binary)
+        candidate.chmod(0o755)
+        result = subprocess.check_output([candidate, "--version"], text=True, timeout=10)
+        if result.splitlines()[0] != f"starship {version}":
+            raise SystemExit("Starship binary does not match the selected version")
+        os.replace(candidate, output)
+    print(output)
+
+
+if __name__ == "__main__":
+    main()

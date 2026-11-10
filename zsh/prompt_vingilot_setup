@@ -1,0 +1,224 @@
+# Vingilot
+# Compact native-zsh prompt with a Starship-powered contextual RPROMPT.
+
+emulate -L zsh
+setopt localoptions
+
+# ---------------------------------------------------------------------------
+# User-overridable defaults
+# ---------------------------------------------------------------------------
+
+: ${VINGILOT_SYMBOL:=$'\uF061'}
+: ${VINGILOT_ROOT_SYMBOL:=$'\uEF8B'}
+: ${VINGILOT_SUCCESS_COLOR:=green}
+: ${VINGILOT_FAILURE_COLOR:=red}
+: ${VINGILOT_RPROMPT_GAP:=1}
+: ${VINGILOT_CWD_MAX:=20}
+: ${VINGILOT_CWD_COLOR:='#707784'}
+: ${VINGILOT_STARSHIP:=${commands[starship]:-/usr/local/bin/starship}}
+
+# Starship's generated zsh initialization embeds its executable path.
+# Reject paths its shell code cannot represent safely before changing config.
+VINGILOT_STARSHIP=${VINGILOT_STARSHIP:A}
+if [[ ! -x "$VINGILOT_STARSHIP" || ! "$VINGILOT_STARSHIP" =~ '^/[A-Za-z0-9._/+@-]+$' ]]; then
+    print -u2 -- 'vingilot: select a Starship executable at a shell-safe absolute path'
+    return 1
+fi
+
+local user_config="${XDG_CONFIG_HOME:-$HOME/.config}/vingilot/starship.toml"
+local user_data_config="${XDG_DATA_HOME:-$HOME/.local/share}/vingilot/starship.toml"
+local local_data_config="/usr/local/share/vingilot/starship.toml"
+local system_data_config="/usr/share/vingilot/starship.toml"
+
+# Remember STARSHIP_CONFIG exactly as we found it so cleanup can restore the
+# caller's environment.
+if (( ${+STARSHIP_CONFIG} )); then
+    typeset -g _VINGILOT_HAD_STARSHIP_CONFIG=1
+    typeset -g _VINGILOT_PREVIOUS_STARSHIP_CONFIG="$STARSHIP_CONFIG"
+else
+    typeset -g _VINGILOT_HAD_STARSHIP_CONFIG=0
+fi
+
+# Configuration precedence:
+#
+#   1. Existing STARSHIP_CONFIG
+#   2. Per-user Vingilot configuration
+#   3. Explicit VINGILOT_STARSHIP_CONFIG
+#   4. Per-user Vingilot data installation
+#   5. Local system installation
+#   6. System/package installation
+#
+# Vingilot never overwrites an explicit STARSHIP_CONFIG.
+if [[ -z ${STARSHIP_CONFIG:-} ]]; then
+    if [[ -r "$user_config" ]]; then
+        export STARSHIP_CONFIG="$user_config"
+    elif [[ -n ${VINGILOT_STARSHIP_CONFIG:-} && -r "$VINGILOT_STARSHIP_CONFIG" ]]; then
+        export STARSHIP_CONFIG="$VINGILOT_STARSHIP_CONFIG"
+    elif [[ -r "$user_data_config" ]]; then
+        export STARSHIP_CONFIG="$user_data_config"
+    elif [[ -r "$local_data_config" ]]; then
+        export STARSHIP_CONFIG="$local_data_config"
+    elif [[ -r "$system_data_config" ]]; then
+        export STARSHIP_CONFIG="$system_data_config"
+    else
+        print -u2 -- "vingilot: no Starship configuration found"
+        return 1
+    fi
+fi
+
+# The prompt framework will apply these after setup returns.
+prompt_opts=(percent subst)
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+prompt_vingilot_width() {
+    emulate -L zsh
+
+    local prompt=$1
+    local COLUMNS=${2:-$COLUMNS}
+    local -i x=0 y=${#prompt} m
+
+    (( y == 0 )) && {
+        print -r -- 0
+        return
+    }
+
+    while (( y < 32768 && ${${(%):-${prompt}%${y}(l.1.0)}[-1]} )); do
+        x=$y
+        (( y *= 2 ))
+    done
+
+    while (( y > x + 1 )); do
+        (( m = x + (y - x) / 2 ))
+        (( ${${(%):-${prompt}%${m}(l.x.y)}[-1]} = m ))
+    done
+
+    print -r -- "$x"
+}
+
+prompt_vingilot_precmd() {
+    emulate -L zsh
+    setopt localoptions
+
+    # Non-interactive shells may not have a terminal width.
+    local -i columns=$(( COLUMNS > 0 ? COLUMNS : 80 ))
+    local -i left_width
+    left_width=$(prompt_vingilot_width "$PS1" "$columns")
+
+    # Keep CWD bounded and predictable.
+    local cwd="${(%):-%~}"
+    local -i cwd_max=$VINGILOT_CWD_MAX
+
+    if (( cwd_max > 3 && ${#cwd} > cwd_max )); then
+        local -i tail=$(( cwd_max - 3 ))
+        cwd="...${cwd[-tail,-1]}"
+    fi
+
+    # Keep directory text out of the prompt expression and escape prompt escapes.
+    cwd=${cwd//[[:cntrl:]]/?}
+    typeset -g _VINGILOT_CWD="${cwd//\%/%%}"
+
+    local -i width=$(( columns - left_width - VINGILOT_RPROMPT_GAP ))
+    (( width < 1 )) && width=1
+
+    # Starship owns contextual metadata.
+    # zsh owns the final transition and bounded CWD tail.
+    RPROMPT="%${width}>>${_VINGILOT_STARSHIP_RPROMPT}%F{${VINGILOT_CWD_COLOR}}\${_VINGILOT_CWD}%f\${(r:\$COLUMNS:: :)}"
+}
+
+prompt_vingilot_help() {
+    cat <<'HELP'
+Vingilot — compact zsh + Starship prompt theme
+
+Overrides:
+  VINGILOT_SYMBOL
+  VINGILOT_ROOT_SYMBOL
+  VINGILOT_SUCCESS_COLOR
+  VINGILOT_FAILURE_COLOR
+  VINGILOT_RPROMPT_GAP
+  VINGILOT_CWD_MAX
+  VINGILOT_CWD_COLOR
+  VINGILOT_STARSHIP
+  VINGILOT_STARSHIP_CONFIG
+
+Starship config precedence:
+  1. Existing STARSHIP_CONFIG
+  2. ${XDG_CONFIG_HOME:-~/.config}/vingilot/starship.toml
+  3. VINGILOT_STARSHIP_CONFIG
+  4. ${XDG_DATA_HOME:-~/.local/share}/vingilot/starship.toml
+  5. /usr/local/share/vingilot/starship.toml
+  6. /usr/share/vingilot/starship.toml
+HELP
+}
+
+# ---------------------------------------------------------------------------
+# Theme lifecycle
+# ---------------------------------------------------------------------------
+
+# Save state that Vingilot modifies outside the standard prompt variables.
+if (( ${+ZLE_RPROMPT_INDENT} )); then
+    typeset -g _VINGILOT_HAD_RPROMPT_INDENT=1
+    typeset -g _VINGILOT_PREVIOUS_RPROMPT_INDENT=$ZLE_RPROMPT_INDENT
+else
+    typeset -g _VINGILOT_HAD_RPROMPT_INDENT=0
+fi
+
+prompt_vingilot_cleanup() {
+    emulate -L zsh
+
+    if (( ${_VINGILOT_HAD_RPROMPT_INDENT:-0} )); then
+        typeset -g ZLE_RPROMPT_INDENT=$_VINGILOT_PREVIOUS_RPROMPT_INDENT
+    else
+        unset ZLE_RPROMPT_INDENT
+    fi
+
+    if (( ${_VINGILOT_HAD_STARSHIP_CONFIG:-0} )); then
+        export STARSHIP_CONFIG="$_VINGILOT_PREVIOUS_STARSHIP_CONFIG"
+    else
+        unset STARSHIP_CONFIG
+    fi
+
+    autoload -Uz add-zsh-hook
+    add-zsh-hook -d precmd prompt_vingilot_precmd
+    (( ${_VINGILOT_HAD_STARSHIP_PRECMD:-0} )) || add-zsh-hook -d precmd prompt_starship_precmd
+    (( ${_VINGILOT_HAD_STARSHIP_PREEXEC:-0} )) || add-zsh-hook -d preexec prompt_starship_preexec
+    unset _VINGILOT_HAD_STARSHIP_PRECMD _VINGILOT_HAD_STARSHIP_PREEXEC
+
+    unset _VINGILOT_STARSHIP_RPROMPT
+    unset _VINGILOT_CWD
+    unset _VINGILOT_HAD_RPROMPT_INDENT
+    unset _VINGILOT_PREVIOUS_RPROMPT_INDENT
+    unset _VINGILOT_HAD_STARSHIP_CONFIG
+    unset _VINGILOT_PREVIOUS_STARSHIP_CONFIG
+}
+
+prompt_cleanup 'prompt_vingilot_cleanup'
+
+# ---------------------------------------------------------------------------
+# Starship
+# ---------------------------------------------------------------------------
+
+typeset -g _VINGILOT_HAD_STARSHIP_PRECMD=${precmd_functions[(Ie)prompt_starship_precmd]}
+typeset -g _VINGILOT_HAD_STARSHIP_PREEXEC=${preexec_functions[(Ie)prompt_starship_preexec]}
+eval "$("$VINGILOT_STARSHIP" init zsh)"
+
+typeset -g _VINGILOT_STARSHIP_RPROMPT="$RPROMPT"
+
+# ---------------------------------------------------------------------------
+# Native zsh prompt
+# ---------------------------------------------------------------------------
+
+local prompt_symbol=$VINGILOT_SYMBOL
+(( EUID == 0 )) && prompt_symbol=$VINGILOT_ROOT_SYMBOL
+
+PS1="%(?.%F{${VINGILOT_SUCCESS_COLOR}}.%F{${VINGILOT_FAILURE_COLOR}})${prompt_symbol}%f "
+
+typeset -g ZLE_RPROMPT_INDENT=0
+setopt TRANSIENT_RPROMPT
+
+autoload -Uz add-zsh-hook
+add-zsh-hook precmd prompt_vingilot_precmd
+
+prompt_vingilot_precmd

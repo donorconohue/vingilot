@@ -1,0 +1,12 @@
+{
+  "starship": {
+    "version": "1.27.0",
+    "preset_sha256": "36291374da0fb4fb4ca1daefa898862fa00e6f32d261ab82cff164ee1c6b8ce7",
+    "archives": {
+      "x86_64-apple-darwin": "344e4d38787e0aa86dd522ae5462e6fb6da1227691f81a79ffed480a4563ccb3",
+      "aarch64-apple-darwin": "5362da8cb2928f98f3ce0ffda697cf0f8de70081db000dae316d6d3a404f6cf0",
+      "x86_64-unknown-linux-musl": "10c8eb4cb3b761d9bf59ea828444c2dab36c900b7d69a69e08814b286969df89",
+      "aarch64-unknown-linux-musl": "341f5cbf24699fa0b27ec88965ad25f862ea09e15d35a543fd6ffdff1d2aa00d"
+    }
+  }
+}

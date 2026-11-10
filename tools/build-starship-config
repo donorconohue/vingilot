@@ -1,0 +1,99 @@
+#!/usr/bin/env python3
+
+from __future__ import annotations
+
+import argparse
+import re
+import tomllib
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+TOKEN = re.compile(
+    r"@@(?:"
+    r"(NFS):([A-Za-z0-9_.-]+):([A-Za-z0-9_.-]+)"
+    r"(?:\|U:([0-9A-Fa-f]+))?"
+    r"|U:([0-9A-Fa-f]+)"
+    r")@@"
+)
+
+
+def get_nested(data: dict, table: str, key: str):
+    cur = data
+    for part in table.split("."):
+        try:
+            cur = cur[part]
+        except (KeyError, TypeError):
+            raise SystemExit(f"Starship Nerd Font preset has no [{table}] {key!r}") from None
+
+    try:
+        return cur[key]
+    except (KeyError, TypeError):
+        raise SystemExit(f"Starship Nerd Font preset has no [{table}] {key!r}") from None
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--preset",
+        type=Path,
+        default=ROOT / "starship/presets/nerd-font-symbols.toml",
+        help="Pinned upstream Nerd Font preset input",
+    )
+    parser.add_argument(
+        "--template",
+        type=Path,
+        default=ROOT / "starship" / "vingilot.toml.in",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=ROOT / "starship" / "generated" / "vingilot.toml",
+    )
+    args = parser.parse_args()
+
+    template = args.template.read_text(encoding="ascii")
+
+    with args.preset.open("rb") as preset:
+        symbols = tomllib.load(preset)
+
+    def replace(match: re.Match[str]) -> str:
+        if match.group(1) == "NFS":
+            table = match.group(2)
+            key = match.group(3)
+            fallback = match.group(4)
+
+            try:
+                value = get_nested(symbols, table, key)
+            except SystemExit:
+                if fallback is None:
+                    raise
+                return chr(int(fallback, 16))
+
+            if not isinstance(value, str):
+                raise SystemExit(f"{table}.{key} is not a string")
+
+            # Vingilot owns spacing explicitly.
+            return value.strip()
+
+        cp = int(match.group(5), 16)
+        return chr(cp)
+
+    rendered = TOKEN.sub(replace, template)
+
+    leftovers = sorted(set(re.findall(r"@@[^@]+@@", rendered)))
+    if leftovers:
+        raise SystemExit("unresolved Vingilot tokens: " + ", ".join(leftovers))
+
+    # Validate TOML before writing.
+    tomllib.loads(rendered)
+
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(rendered, encoding="utf-8")
+
+    print(args.output)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
